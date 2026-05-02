@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String        @map("password_hash")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  
+  transactions Transaction[]
+  portfolio    Portfolio?
+  settings     UserSettings?
+  
+  @@map("users")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  amount      Decimal         @db.Decimal(15, 2)
+  type        TransactionType
+  category    String
+  description String?
+  date        DateTime
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, date])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Portfolio {
+  id        String          @id @default(uuid())
+  userId    String          @unique @map("user_id")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions StockPosition[]
+  
+  @@map("portfolios")
+}
+
+model StockPosition {
+  id            String    @id @default(uuid())
+  portfolioId   String    @map("portfolio_id")
+  symbol        String
+  quantity      Decimal   @db.Decimal(15, 4)
+  purchasePrice Decimal   @map("purchase_price") @db.Decimal(15, 2)
+  purchaseDate  DateTime  @map("purchase_date")
+  takeProfitPrice     Decimal? @map("take_profit_price") @db.Decimal(15, 2)
+  stopLossPrice       Decimal? @map("stop_loss_price") @db.Decimal(15, 2)
+  isTakeProfitAlerted Boolean  @default(false) @map("is_take_profit_alerted")
+  isStopLossAlerted   Boolean  @default(false) @map("is_stop_loss_alerted")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  @@index([portfolioId])
+  @@map("stock_positions")
+}
+
+model UserSettings {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  theme     Theme    @default(LIGHT)
+  currency  String   @default("USD")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_settings")
+}
+
+enum Theme {
+  LIGHT
+  DARK
+}
